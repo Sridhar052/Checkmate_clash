@@ -160,7 +160,7 @@ export const TournamentManager: React.FC = () => {
     });
   };
 
-  const findMatch = async () => {
+  const playNow = async () => {
     if (!tournament || !user) return;
     setLoading(true);
     try {
@@ -211,10 +211,10 @@ export const TournamentManager: React.FC = () => {
       });
     } catch (e: any) {
       if (e?.message === 'No idle players found') {
-        alert('No idle players found. Please wait for another player to join.');
+        alert('No idle players available. Please wait for another player to join.');
       } else {
-        console.error('findMatch error', e);
-        alert('Error finding match. Please try again.');
+        console.error('playNow error', e);
+        alert('Error starting game. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -581,8 +581,8 @@ export const TournamentManager: React.FC = () => {
                     </div>
 
                     {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
-                      <button onClick={findMatch} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
-                        Find Next Match
+                      <button onClick={playNow} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
+                        Play Now
                       </button>
                     )}
                   </div>
