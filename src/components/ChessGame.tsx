@@ -186,7 +186,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
     [game, gameId, isWhite, gameStatus, isSpectator, tournamentId]
   );
 
-  function onDrop(sourceSquare: string, targetSquare: string) {
+  function onDrop({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string }) {
     if (gameOver || isSpectator) return false;
     makeAMove({
       from: sourceSquare,
@@ -196,7 +196,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
     return true;
   }
 
-  function onSquareClick(square: string) {
+  function onSquareClick({ square }: { square: string }) {
     if (gameOver || isSpectator) return;
     if (!moveFrom) {
       const moves = game.moves({ square, verbose: true });
@@ -235,22 +235,22 @@ export const ChessGame: React.FC<ChessGameProps> = ({
 
           <div className="relative w-full max-w-[600px] aspect-square shadow-2xl rounded-sm overflow-hidden">
             <Chessboard
-              {...({
+              options={{
                 position: game.fen(),
                 onPieceDrop: onDrop,
                 onSquareClick: onSquareClick,
-                animationDuration: 200,
+                animationDurationInMs: 200,
                 boardOrientation: isWhite ? "white" : "black",
-                customDarkSquareStyle: { backgroundColor: '#779556' },
-                customLightSquareStyle: { backgroundColor: '#ebecd0' },
-                customSquareStyles: {
+                darkSquareStyle: { backgroundColor: '#779556' },
+                lightSquareStyle: { backgroundColor: '#ebecd0' },
+                squareStyles: {
                   ...optionSquares,
                   ...(lastMove ? {
                     [lastMove.from]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' },
                     [lastMove.to]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' }
                   } : {})
                 }
-              } as any)}
+              }}
             />
             
             <AnimatePresence>
