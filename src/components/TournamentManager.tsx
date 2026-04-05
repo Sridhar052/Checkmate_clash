@@ -160,6 +160,36 @@ export const TournamentManager: React.FC = () => {
     });
   };
 
+  const endTournament = async () => {
+    if (!tournament || tournament.adminId !== user?.uid) return;
+    if (!confirm('Are you sure you want to end the tournament? This will stop all games and finalize the standings.')) {
+      return;
+    }
+    
+    try {
+      // End all active games
+      const gamesQuery = query(collection(db, 'games'), where('tournamentId', '==', tournament.id), where('status', '==', 'active'));
+      const gamesSnapshot = await getDocs(gamesQuery);
+      
+      const endPromises = gamesSnapshot.docs.map(gameDoc => 
+        updateDoc(doc(db, 'games', gameDoc.id), { status: 'finished' })
+      );
+      
+      await Promise.all(endPromises);
+      
+      // Update tournament status to finished
+      await updateDoc(doc(db, 'tournaments', tournament.id), { 
+        status: 'finished',
+        endTime: Date.now()
+      });
+      
+      alert('Tournament has been ended. Final standings are now available.');
+    } catch (error) {
+      console.error('Error ending tournament:', error);
+      alert('Failed to end tournament. Please try again.');
+    }
+  };
+
   const playNow = async () => {
     if (!tournament || !user) return;
     setLoading(true);
@@ -591,6 +621,15 @@ export const TournamentManager: React.FC = () => {
                     {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
                       <button onClick={playNow} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
                         Play Now
+                      </button>
+                    )}
+
+                    {tournament.adminId === user.uid && (
+                      <button 
+                        onClick={endTournament} 
+                        className="w-full py-4 bg-red-600 rounded-xl font-bold text-lg hover:bg-red-700 transition-all"
+                      >
+                        End Tournament
                       </button>
                     )}
                   </div>
