@@ -116,32 +116,36 @@ export const TournamentManager: React.FC = () => {
   };
 
   const joinTournament = async () => {
-    if (!playerName.trim()) {
+    const code = inviteCode.trim().toUpperCase();
+    const name = playerName.trim();
+    if (!name) {
       alert('Please enter your player name before joining a tournament.');
       return;
     }
-    if (!inviteCode.trim()) {
+    if (!code) {
       alert('Please enter the invite code.');
       return;
     }
     setLoading(true);
-    setUser((u) => ({ ...u, displayName: playerName.trim() }));
+    setUser((u) => ({ ...u, displayName: name }));
     try {
-      const q = query(collection(db, 'tournaments'), where('inviteCode', '==', inviteCode.toUpperCase()), where('status', '==', 'waiting'));
+      const q = query(collection(db, 'tournaments'), where('inviteCode', '==', code), where('status', '==', 'waiting'));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         const tDoc = snapshot.docs[0];
         const tData = tDoc.data();
-        if (!tData.players.some((p: any) => p.uid === user.uid)) {
-          const newPlayers = [...tData.players, { uid: user.uid, name: playerName.trim(), score: 0, status: 'idle' }];
+        const players = Array.isArray(tData.players) ? tData.players : [];
+        const alreadyJoined = players.some((p: any) => p.uid === user.uid);
+        if (!alreadyJoined) {
+          const newPlayers = [...players, { uid: user.uid, name, score: 0, status: 'idle' }];
           await updateDoc(doc(db, 'tournaments', tDoc.id), { players: newPlayers });
         }
       } else {
         alert('Invalid or inactive invite code!');
       }
-    } catch (e) {
-      console.error(e);
-      alert('Unable to join tournament. Please try again.');
+    } catch (e: any) {
+      console.error('joinTournament error', e);
+      alert(`Unable to join tournament. ${e?.message || 'Please try again.'}`);
     }
     setLoading(false);
   };
