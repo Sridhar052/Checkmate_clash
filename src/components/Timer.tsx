@@ -14,7 +14,7 @@ export const Timer: React.FC<TimerProps> = ({ initialTime, isActive, onTimeUp })
   }, [initialTime]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs, getDoc } from '../firebase';
+import { db, collection, doc, addDoc, setDoc, updateDoc, onSnapshot, query, where, getDocs, getDoc, runTransaction } from '../firebase';
 import { Trophy, Users, Play, Plus, UserPlus, Copy, Check, Clock, Eye, Swords, Settings } from 'lucide-react';
 import { ChessGame } from './ChessGame';
 import { motion, AnimatePresence } from 'motion/react';
@@ -164,45 +164,106 @@ export const TournamentManager: React.FC = () => {
     if (!tournament || !user) return;
     setLoading(true);
     try {
-      // Simple pairing: find another idle player
-      const idleOpponent = tournament.players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
-      if (idleOpponent) {
-        // Randomly assign white and black
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      await runTransaction(db, async (transaction) => {
+        const tournamentSnap = await transaction.get(tournamentRef);
+        if (!tournamentSnap.exists()) {
+          throw new Error('Tournament not found');
+        }
+
+        const tournamentData = tournamentSnap.data();
+        const players = Array.isArray(tournamentData.players) ? tournamentData.players : [];
+        const idleOpponent = players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
+        if (!idleOpponent) {
+          throw new Error('No idle players found');
+        }
+
         const isCurrentUserWhite = Math.random() > 0.5;
         const whitePlayerId = isCurrentUserWhite ? user.uid : idleOpponent.uid;
         const blackPlayerId = isCurrentUserWhite ? idleOpponent.uid : user.uid;
         const whitePlayerName = isCurrentUserWhite ? user.displayName : idleOpponent.name;
         const blackPlayerName = isCurrentUserWhite ? idleOpponent.name : user.displayName;
+        const initialTime = (tournamentData.matchTime || 3) * 60;
 
-        // Create game
-        const initialTime = (tournament.matchTime || 3) * 60;
-        const gameRef = await addDoc(collection(db, 'games'), {
-          tournamentId: tournament.id,
-          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          whitePlayerId: whitePlayerId,
-          blackPlayerId: blackPlayerId,
-          whitePlayerName: whitePlayerName,
-          blackPlayerName: blackPlayerName,
-          whiteTime: initialTime,
-          blackTime: initialTime,
-          turn: 'w',
-          status: 'active'
-        });
-        
-        // Update player statuses
-        const newPlayers = tournament.players.map((p: any) => {
+        const newPlayers = players.map((p: any) => {
           if (p.uid === user.uid || p.uid === idleOpponent.uid) {
             return { ...p, status: 'playing' };
           }
           return p;
         });
-        await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
-      } else {
+
+        transaction.update(tournamentRef, { players: newPlayers });
+
+        const gamesCollection = collection(db, 'games');
+        const newGameRef = doc(gamesCollection);
+        transaction.set(newGameRef, {
+          tournamentId: tournament.id,
+          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          whitePlayerId,
+          blackPlayerId,
+          whitePlayerName,
+          blackPlayerName,
+          whiteTime: initialTime,
+          blackTime: initialTime,
+          turn: 'w',
+          status: 'active'
+        });
+      });
+    } catch (e: any) {
+      if (e?.message === 'No idle players found') {
         alert('No idle players found. Please wait for another player to join.');
+      } else {
+        console.error('findMatch error', e);
+        alert('Error finding match. Please try again.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const simulateMatch = async () => {
+    if (!tournament || !user) return;
+    setLoading(true);
+    try {
+      const idleOpponent = tournament.players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
+      if (!idleOpponent) {
+        alert('No idle players available to simulate a match.');
+        setLoading(false);
+        return;
+      }
+
+      const resultRoll = Math.random();
+      const isDraw = resultRoll >= 0.8;
+      const userWins = resultRoll < 0.45;
+      const opponentWins = !isDraw && !userWins;
+
+      const newPlayers = tournament.players.map((p: any) => {
+        if (p.uid === user.uid || p.uid === idleOpponent.uid) {
+          let score = p.score;
+          if (isDraw) {
+            score += 1;
+          } else if (userWins && p.uid === user.uid) {
+            score += 2;
+          } else if (opponentWins && p.uid === idleOpponent.uid) {
+            score += 2;
+          } else {
+            score += 1;
+          }
+          return { ...p, score, status: 'idle' };
+        }
+        return p;
+      });
+
+      await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
+      alert(isDraw
+        ? `Draw! ${user.displayName} and ${idleOpponent.name} each receive 1 point.`
+        : userWins
+          ? `${user.displayName} wins and gains 2 points; ${idleOpponent.name} receives 1 point.`
+          : `${idleOpponent.name} wins and gains 2 points; ${user.displayName} receives 1 point.`
+      );
     } catch (e) {
-      console.error('findMatch error', e);
-      alert('Error finding match. Please try again.');
+      console.error('simulateMatch error', e);
+      alert('Unable to simulate match. Please try again.');
     }
     setLoading(false);
   };
@@ -567,9 +628,14 @@ export const TournamentManager: React.FC = () => {
                     </div>
 
                     {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
-                      <button onClick={findMatch} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
-                        Find Next Match
-                      </button>
+                      <div className="grid gap-4">
+                        <button onClick={findMatch} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
+                          Find Next Match
+                        </button>
+                        <button onClick={simulateMatch} className="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all">
+                          Simulate Random Match
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

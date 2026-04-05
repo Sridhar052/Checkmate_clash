@@ -37,7 +37,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
   const [blackPlayerId, setBlackPlayerId] = useState('');
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (gameStatus === 'active') {
       interval = setInterval(() => {
         const turn = game.turn();
@@ -121,8 +121,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({
       const newPlayers = tData.players.map((p: any) => {
         if (p.uid === gData.whitePlayerId || p.uid === gData.blackPlayerId) {
           let newScore = p.score;
-          if (isDraw) newScore += 1;
-          else if (p.uid === winnerId) newScore += 2;
+          if (isDraw) {
+            newScore += 1;
+          } else {
+            newScore += p.uid === winnerId ? 2 : 1;
+          }
           return { ...p, score: newScore, status: 'idle' };
         }
         return p;
