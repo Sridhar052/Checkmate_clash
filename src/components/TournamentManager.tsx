@@ -205,9 +205,9 @@ export const TournamentManager: React.FC = () => {
 
         const tournamentData = tournamentSnap.data();
         const players = Array.isArray(tournamentData.players) ? tournamentData.players : [];
-        const idleOpponent = players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
+        const idleOpponent = players.find((p: any) => p.uid !== user.uid && p.uid !== tournamentData.adminId && p.status === 'idle');
         if (!idleOpponent) {
-          throw new Error('No idle players found');
+          throw new Error('No idle players available');
         }
 
         const isCurrentUserWhite = Math.random() > 0.5;
@@ -248,8 +248,8 @@ export const TournamentManager: React.FC = () => {
       setActiveGameId(gameId!);
       
     } catch (e: any) {
-      if (e?.message === 'No idle players found') {
-        alert('No idle players available. Please wait for another player to join.');
+      if (e?.message === 'No idle players available') {
+        alert('No other players are currently available to play against. Please wait for more players to join or finish their current games.');
       } else {
         console.error('playNow error', e);
         alert('Error starting game. Please try again.');
@@ -262,15 +262,32 @@ export const TournamentManager: React.FC = () => {
   const handleGameExit = async (gameId: string) => {
     if (!tournament) return;
     
-    // Get the game data to check if it's finished
+    // Get the game data
     const gameRef = doc(db, 'games', gameId);
     try {
       const gameSnap = await getDoc(gameRef);
       if (gameSnap.exists()) {
         const gameData = gameSnap.data();
         
-        // If game is finished, reset player status to idle for next match
-        if (gameData.status === 'finished') {
+        // If game is still active, forfeit it and reset both players
+        if (gameData.status === 'active') {
+          // Mark game as finished (forfeited)
+          await updateDoc(gameRef, { 
+            status: 'finished', 
+            winner: 'Game forfeited - player exited',
+            winnerId: null 
+          });
+          
+          // Reset both players to idle
+          const newPlayers = tournament.players.map((p: any) => {
+            if (p.uid === gameData.whitePlayerId || p.uid === gameData.blackPlayerId) {
+              return { ...p, status: 'idle' };
+            }
+            return p;
+          });
+          await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
+        } else if (gameData.status === 'finished') {
+          // Game already finished, just ensure current player is idle
           const newPlayers = tournament.players.map((p: any) => {
             if (p.uid === user.uid) {
               return { ...p, status: 'idle' };
