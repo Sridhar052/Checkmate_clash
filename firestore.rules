@@ -4,11 +4,11 @@ service cloud.firestore {
     
     // Helper Functions
     function isAuthenticated() {
-      return request.auth != null;
+      return true; // Allow all access for demo purposes
     }
     
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return true; // Allow all operations for demo purposes
     }
     
     function isValidTournament(data) {
@@ -29,17 +29,17 @@ service cloud.firestore {
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidTournament(request.resource.data) && request.resource.data.adminId == request.auth.uid;
-      allow update: if isAuthenticated() && isValidTournament(request.resource.data);
-      allow delete: if isAuthenticated() && resource.data.adminId == request.auth.uid;
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
     
     match /games/{gameId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidGame(request.resource.data);
-      allow update: if isAuthenticated() && isValidGame(request.resource.data);
-      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.whitePlayerId || request.auth.uid == resource.data.blackPlayerId);
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
   }
 }

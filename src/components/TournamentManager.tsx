@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, auth, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs, signIn, logOut } from '../firebase';
-import { Trophy, Users, Play, LogIn, LogOut, Plus, UserPlus, Copy, Check, Clock, Eye, Swords, Settings } from 'lucide-react';
+import { db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs } from '../firebase';
+import { Trophy, Users, Play, Plus, UserPlus, Copy, Check, Clock, Eye, Swords, Settings } from 'lucide-react';
 import { ChessGame } from './ChessGame';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const TournamentManager: React.FC = () => {
-  const [user, setUser] = useState(auth.currentUser);
+  const [user, setUser] = useState({ uid: 'anonymous', displayName: 'Anonymous Player', photoURL: '' });
   const [tournament, setTournament] = useState<any>(null);
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,14 +21,8 @@ export const TournamentManager: React.FC = () => {
   const [spectateGameId, setSpectateGameId] = useState<string | null>(null);
   const [activeGames, setActiveGames] = useState<any[]>([]);
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
-
   // Listen for active tournament the user is part of
   useEffect(() => {
-    if (!user) return;
     const q = query(collection(db, 'tournaments'), where('status', 'in', ['waiting', 'started']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userTournament = snapshot.docs.find(doc => {
@@ -197,20 +191,6 @@ export const TournamentManager: React.FC = () => {
     }
   }, [tournament, tournamentTimeLeft]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#161512] flex flex-col items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <Trophy className="text-yellow-500 mx-auto mb-6" size={80} />
-          <h1 className="text-white text-4xl font-bold mb-4">Chess Arena</h1>
-          <button onClick={signIn} className="bg-white text-black px-8 py-4 rounded-xl font-bold flex items-center gap-3 mx-auto">
-            <LogIn size={24} /> Sign in to Play
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
   if (activeGameId) {
     return (
       <ChessGame 
@@ -279,9 +259,11 @@ export const TournamentManager: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
               <p className="font-bold">{user.displayName}</p>
-              <button onClick={logOut} className="text-gray-400 text-sm hover:text-white">Sign Out</button>
+              <p className="text-gray-400 text-sm">Anonymous Player</p>
             </div>
-            <img src={user.photoURL || ''} className="w-10 h-10 rounded-full" alt="" />
+            <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+              <Users size={20} className="text-white" />
+            </div>
           </div>
         </header>
 
