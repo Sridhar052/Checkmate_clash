@@ -618,7 +618,7 @@ export const TournamentManager: React.FC = () => {
                       </div>
                     </div>
 
-                    {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
+                    {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && tournament.adminId !== user.uid && (
                       <button onClick={playNow} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
                         Play Now
                       </button>
@@ -664,6 +664,9 @@ export const TournamentManager: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <span className={`w-6 text-center font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-500' : 'text-gray-600'}`}>{i + 1}</span>
                       <span className="font-medium">{p.name}</span>
+                      {p.uid === tournament.adminId && (
+                        <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded font-bold uppercase">Admin</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-4">
                       {p.status === 'playing' && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
