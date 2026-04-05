@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidTournament(data) {
+      return data.inviteCode is string && data.inviteCode.size() > 0 &&
+             data.adminId is string &&
+             data.status in ['waiting', 'started', 'finished'] &&
+             data.players is list;
+    }
+    
+    function isValidGame(data) {
+      return data.fen is string &&
+             data.whitePlayerId is string &&
+             data.blackPlayerId is string &&
+             data.whiteTime is number &&
+             data.blackTime is number &&
+             data.turn in ['w', 'b'] &&
+             data.status in ['active', 'finished'];
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTournament(request.resource.data) && request.resource.data.adminId == request.auth.uid;
+      allow update: if isAuthenticated() && isValidTournament(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.adminId == request.auth.uid;
+    }
+    
+    match /games/{gameId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidGame(request.resource.data);
+      allow update: if isAuthenticated() && isValidGame(request.resource.data);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.whitePlayerId || request.auth.uid == resource.data.blackPlayerId);
+    }
+  }
+}

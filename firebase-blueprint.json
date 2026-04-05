@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Tournament": {
+      "title": "Tournament",
+      "description": "A chess tournament managed by an admin.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "adminId": { "type": "string" },
+        "players": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uid": { "type": "string" },
+              "name": { "type": "string" },
+              "score": { "type": "number" },
+              "status": { "type": "string", "enum": ["idle", "playing"] }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["waiting", "started", "finished"] },
+        "duration": { "type": "number", "description": "Duration in minutes" },
+        "matchTime": { "type": "number", "description": "Time per player in minutes" },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" }
+      },
+      "required": ["inviteCode", "adminId", "status", "players", "duration"]
+    },
+    "Game": {
+      "title": "Game",
+      "description": "A live chess game instance.",
+      "type": "object",
+      "properties": {
+        "tournamentId": { "type": "string" },
+        "fen": { "type": "string" },
+        "whitePlayerId": { "type": "string" },
+        "blackPlayerId": { "type": "string" },
+        "whitePlayerName": { "type": "string" },
+        "blackPlayerName": { "type": "string" },
+        "whiteTime": { "type": "number" },
+        "blackTime": { "type": "number" },
+        "turn": { "type": "string", "enum": ["w", "b"] },
+        "status": { "type": "string", "enum": ["active", "finished"] },
+        "winner": { "type": "string" },
+        "winnerId": { "type": "string" }
+      },
+      "required": ["tournamentId", "fen", "whitePlayerId", "blackPlayerId", "whiteTime", "blackTime", "turn", "status"]
+    }
+  },
+  "firestore": {
+    "/tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Collection of tournaments."
+    },
+    "/games/{gameId}": {
+      "schema": "Game",
+      "description": "Collection of active and past games."
+    }
+  }
+}
