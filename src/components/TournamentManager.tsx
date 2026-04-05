@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { auth, db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs, onAuthStateChanged, signIn } from '../firebase';
+import { db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs } from '../firebase';
 import { Trophy, Users, Play, Plus, UserPlus, Copy, Check, Clock, Eye, Swords, Settings } from 'lucide-react';
 import { ChessGame } from './ChessGame';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const TournamentManager: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState(() => ({
+    uid: `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    displayName: `Player_${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+    photoURL: ''
+  }));
   const [tournament, setTournament] = useState<any>(null);
   const [inviteCode, setInviteCode] = useState('');
-  const [playerName, setPlayerName] = useState('');
-  const [authLoading, setAuthLoading] = useState(true);
+  const [playerName, setPlayerName] = useState(user.displayName);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [duration, setDuration] = useState(30); // minutes
@@ -23,28 +26,8 @@ export const TournamentManager: React.FC = () => {
   const [spectateGameId, setSpectateGameId] = useState<string | null>(null);
   const [activeGames, setActiveGames] = useState<any[]>([]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u);
-        setPlayerName(`Player_${u.uid.slice(-4).toUpperCase()}`);
-      } else {
-        try {
-          const result = await signIn();
-          setUser(result.user);
-          setPlayerName(`Player_${result.user.uid.slice(-4).toUpperCase()}`);
-        } catch (e) {
-          console.error('Anonymous auth failed', e);
-        }
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   // Listen for active tournament the user is part of
   useEffect(() => {
-    if (!user) return;
     const q = query(collection(db, 'tournaments'), where('status', 'in', ['waiting', 'started']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userTournament = snapshot.docs.find(doc => {
@@ -107,10 +90,6 @@ export const TournamentManager: React.FC = () => {
   };
 
   const createTournament = async () => {
-    if (!user) {
-      alert('Authentication is not ready yet, please wait a moment.');
-      return;
-    }
     if (!playerName.trim()) {
       alert('Please enter your player name before creating a tournament.');
       return;
@@ -137,10 +116,6 @@ export const TournamentManager: React.FC = () => {
   };
 
   const joinTournament = async () => {
-    if (!user) {
-      alert('Authentication is not ready yet, please wait a moment.');
-      return;
-    }
     const code = inviteCode.trim().toUpperCase();
     const name = playerName.trim();
     if (!name) {
@@ -237,22 +212,6 @@ export const TournamentManager: React.FC = () => {
     }
   }, [tournament, tournamentTimeLeft]);
 
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#161512] flex items-center justify-center text-white">
-        <p className="text-xl">Loading game data...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#161512] flex items-center justify-center text-white">
-        <p className="text-xl">Unable to connect to Firebase auth. Please refresh the page.</p>
-      </div>
-    );
-  }
 
   if (activeGameId) {
     return (
