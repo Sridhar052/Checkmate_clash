@@ -89,6 +89,32 @@ export const TournamentManager: React.FC = () => {
     setLoading(false);
   };
 
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    return [...array].sort(() => Math.random() - 0.5);
+  };
+
+  const findRandomAvailableOpponent = (players: any[], currentUserId: string) => {
+    const availablePlayers = players.filter((p: any) => p.uid !== currentUserId && p.status === 'idle');
+    const shuffled = shuffleArray(availablePlayers);
+    return shuffled.length > 0 ? shuffled[0] : null;
+  };
+
+  const buildGamePayload = (tournamentId: string, currentUser: any, opponent: any, matchTime: number) => {
+    const isCurrentUserWhite = Math.random() > 0.5;
+    return {
+      tournamentId,
+      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      whitePlayerId: isCurrentUserWhite ? currentUser.uid : opponent.uid,
+      blackPlayerId: isCurrentUserWhite ? opponent.uid : currentUser.uid,
+      whitePlayerName: isCurrentUserWhite ? currentUser.displayName : opponent.name,
+      blackPlayerName: isCurrentUserWhite ? opponent.name : currentUser.displayName,
+      whiteTime: matchTime * 60,
+      blackTime: matchTime * 60,
+      turn: 'w',
+      status: 'active'
+    };
+  };
+
   const createTournament = async () => {
     if (!playerName.trim()) {
       alert('Please enter your player name before creating a tournament.');
@@ -193,10 +219,11 @@ export const TournamentManager: React.FC = () => {
   const playNow = async () => {
     if (!tournament || !user) return;
     setLoading(true);
+
     try {
       const tournamentRef = doc(db, 'tournaments', tournament.id);
-      let gameId: string;
-      
+      let newGameId: string | null = null;
+
       await runTransaction(db, async (transaction) => {
         const tournamentSnap = await transaction.get(tournamentRef);
         if (!tournamentSnap.exists()) {
@@ -205,18 +232,12 @@ export const TournamentManager: React.FC = () => {
 
         const tournamentData = tournamentSnap.data();
         const players = Array.isArray(tournamentData.players) ? tournamentData.players : [];
-        const idleOpponent = players.find((p: any) => p.uid !== user.uid && p.uid !== tournamentData.adminId && p.status === 'idle');
+        const idleOpponent = findRandomAvailableOpponent(players, user.uid);
         if (!idleOpponent) {
           throw new Error('No idle players available');
         }
 
-        const isCurrentUserWhite = Math.random() > 0.5;
-        const whitePlayerId = isCurrentUserWhite ? user.uid : idleOpponent.uid;
-        const blackPlayerId = isCurrentUserWhite ? idleOpponent.uid : user.uid;
-        const whitePlayerName = isCurrentUserWhite ? user.displayName : idleOpponent.name;
-        const blackPlayerName = isCurrentUserWhite ? idleOpponent.name : user.displayName;
-        const initialTime = (tournamentData.matchTime || 3) * 60;
-
+        const gamePayload = buildGamePayload(tournament.id, user, idleOpponent, tournamentData.matchTime || 3);
         const newPlayers = players.map((p: any) => {
           if (p.uid === user.uid || p.uid === idleOpponent.uid) {
             return { ...p, status: 'playing' };
@@ -226,27 +247,14 @@ export const TournamentManager: React.FC = () => {
 
         transaction.update(tournamentRef, { players: newPlayers });
 
-        const gamesCollection = collection(db, 'games');
-        const newGameRef = doc(gamesCollection);
-        gameId = newGameRef.id;
-        
-        transaction.set(newGameRef, {
-          tournamentId: tournament.id,
-          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          whitePlayerId,
-          blackPlayerId,
-          whitePlayerName,
-          blackPlayerName,
-          whiteTime: initialTime,
-          blackTime: initialTime,
-          turn: 'w',
-          status: 'active'
-        });
+        const newGameRef = doc(collection(db, 'games'));
+        newGameId = newGameRef.id;
+        transaction.set(newGameRef, { id: newGameRef.id, ...gamePayload });
       });
-      
-      // Set activeGameId immediately after successful transaction
-      setActiveGameId(gameId!);
-      
+
+      if (newGameId) {
+        setActiveGameId(newGameId);
+      }
     } catch (e: any) {
       if (e?.message === 'No idle players available') {
         alert('No other players are currently available to play against. Please wait for more players to join or finish their current games.');
@@ -635,7 +643,7 @@ export const TournamentManager: React.FC = () => {
                       </div>
                     </div>
 
-                    {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && tournament.adminId !== user.uid && (
+                    {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
                       <button onClick={playNow} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
                         Play Now
                       </button>
