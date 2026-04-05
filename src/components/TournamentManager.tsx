@@ -165,6 +165,8 @@ export const TournamentManager: React.FC = () => {
     setLoading(true);
     try {
       const tournamentRef = doc(db, 'tournaments', tournament.id);
+      let gameId: string;
+      
       await runTransaction(db, async (transaction) => {
         const tournamentSnap = await transaction.get(tournamentRef);
         if (!tournamentSnap.exists()) {
@@ -196,6 +198,8 @@ export const TournamentManager: React.FC = () => {
 
         const gamesCollection = collection(db, 'games');
         const newGameRef = doc(gamesCollection);
+        gameId = newGameRef.id;
+        
         transaction.set(newGameRef, {
           tournamentId: tournament.id,
           fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -209,6 +213,10 @@ export const TournamentManager: React.FC = () => {
           status: 'active'
         });
       });
+      
+      // Set activeGameId immediately after successful transaction
+      setActiveGameId(gameId!);
+      
     } catch (e: any) {
       if (e?.message === 'No idle players found') {
         alert('No idle players available. Please wait for another player to join.');
