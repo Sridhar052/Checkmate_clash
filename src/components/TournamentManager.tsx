@@ -12,6 +12,7 @@ export const TournamentManager: React.FC = () => {
   }));
   const [tournament, setTournament] = useState<any>(null);
   const [inviteCode, setInviteCode] = useState('');
+  const [playerName, setPlayerName] = useState(user.displayName);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [duration, setDuration] = useState(30); // minutes
@@ -89,15 +90,20 @@ export const TournamentManager: React.FC = () => {
   };
 
   const createTournament = async () => {
+    if (!playerName.trim()) {
+      alert('Please enter your player name before creating a tournament.');
+      return;
+    }
     setLoading(true);
+    setUser((u) => ({ ...u, displayName: playerName.trim() }));
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
       await addDoc(collection(db, 'tournaments'), {
-        name: `${user.displayName}'s Arena`,
+        name: `${playerName.trim()}'s Arena`,
         inviteCode: code,
         adminId: user.uid,
         status: 'waiting',
-        players: [{ uid: user.uid, name: user.displayName, score: 0, status: 'idle' }],
+        players: [{ uid: user.uid, name: playerName.trim(), score: 0, status: 'idle' }],
         duration: duration,
         matchTime: matchTime,
         startTime: null,
@@ -110,8 +116,16 @@ export const TournamentManager: React.FC = () => {
   };
 
   const joinTournament = async () => {
-    if (!inviteCode) return;
+    if (!playerName.trim()) {
+      alert('Please enter your player name before joining a tournament.');
+      return;
+    }
+    if (!inviteCode.trim()) {
+      alert('Please enter the invite code.');
+      return;
+    }
     setLoading(true);
+    setUser((u) => ({ ...u, displayName: playerName.trim() }));
     try {
       const q = query(collection(db, 'tournaments'), where('inviteCode', '==', inviteCode.toUpperCase()), where('status', '==', 'waiting'));
       const snapshot = await getDocs(q);
@@ -119,7 +133,7 @@ export const TournamentManager: React.FC = () => {
         const tDoc = snapshot.docs[0];
         const tData = tDoc.data();
         if (!tData.players.some((p: any) => p.uid === user.uid)) {
-          const newPlayers = [...tData.players, { uid: user.uid, name: user.displayName, score: 0, status: 'idle' }];
+          const newPlayers = [...tData.players, { uid: user.uid, name: playerName.trim(), score: 0, status: 'idle' }];
           await updateDoc(doc(db, 'tournaments', tDoc.id), { players: newPlayers });
         }
       } else {
@@ -127,6 +141,7 @@ export const TournamentManager: React.FC = () => {
       }
     } catch (e) {
       console.error(e);
+      alert('Unable to join tournament. Please try again.');
     }
     setLoading(false);
   };
@@ -261,7 +276,7 @@ export const TournamentManager: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
-              <p className="font-bold">{user.displayName}</p>
+              <p className="font-bold">{playerName || user.displayName}</p>
               <p className="text-gray-400 text-sm">Anonymous Player</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
@@ -275,24 +290,36 @@ export const TournamentManager: React.FC = () => {
             <div className="bg-[#262421] p-8 rounded-2xl border border-white/5">
               <Plus className="text-green-500 mb-4" size={48} />
               <h2 className="text-2xl font-bold mb-4">Create Tournament</h2>
-              <div className="mb-6 grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-gray-400 text-sm block mb-2">Arena Duration (min)</label>
-                  <input 
-                    type="number" 
-                    value={duration} 
-                    onChange={(e) => setDuration(parseInt(e.target.value))}
-                    className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
-                  />
-                </div>
-                <div>
-                  <label className="text-gray-400 text-sm block mb-2">Match Time (min)</label>
-                  <input 
-                    type="number" 
-                    value={matchTime} 
-                    onChange={(e) => setMatchTime(parseInt(e.target.value))}
-                    className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
-                  />
+              <div className="space-y-4 mb-6">
+                <input
+                  type="text"
+                  placeholder="Your Player Name"
+                  value={playerName}
+                  onChange={(e) => {
+                    setPlayerName(e.target.value);
+                    setUser((u) => ({ ...u, displayName: e.target.value }));
+                  }}
+                  className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-2">Arena Duration (min)</label>
+                    <input 
+                      type="number" 
+                      value={duration} 
+                      onChange={(e) => setDuration(parseInt(e.target.value))}
+                      className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-2">Match Time (min)</label>
+                    <input 
+                      type="number" 
+                      value={matchTime} 
+                      onChange={(e) => setMatchTime(parseInt(e.target.value))}
+                      className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
+                    />
+                  </div>
                 </div>
               </div>
               <button onClick={createTournament} className="w-full py-4 bg-green-600 rounded-xl font-bold">Create Arena</button>
@@ -300,13 +327,25 @@ export const TournamentManager: React.FC = () => {
             <div className="bg-[#262421] p-8 rounded-2xl border border-white/5">
               <UserPlus className="text-blue-500 mb-4" size={48} />
               <h2 className="text-2xl font-bold mb-4">Join Tournament</h2>
-              <input 
-                type="text" 
-                placeholder="Invite Code" 
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3 mb-6 uppercase"
-              />
+              <div className="space-y-4 mb-6">
+                <input
+                  type="text"
+                  placeholder="Your Player Name"
+                  value={playerName}
+                  onChange={(e) => {
+                    setPlayerName(e.target.value);
+                    setUser((u) => ({ ...u, displayName: e.target.value }));
+                  }}
+                  className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3"
+                />
+                <input 
+                  type="text" 
+                  placeholder="Invite Code" 
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  className="w-full bg-[#1b1a17] border border-white/10 rounded-lg p-3 uppercase"
+                />
+              </div>
               <button onClick={joinTournament} className="w-full py-4 bg-blue-600 rounded-xl font-bold">Join Arena</button>
             </div>
           </div>
