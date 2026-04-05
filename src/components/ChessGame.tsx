@@ -6,8 +6,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, RotateCcw, Eye, Settings, LogOut, Swords } from 'lucide-react';
 import { db, doc, onSnapshot, updateDoc, getDoc } from '../firebase';
 
-const ChessboardAny = Chessboard as any;
-
 interface ChessGameProps {
   gameId: string;
   isWhite: boolean;
@@ -236,7 +234,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
           />
 
           <div className="relative w-full max-w-[600px] aspect-square shadow-2xl rounded-sm overflow-hidden">
-            <ChessboardAny
+            <Chessboard
               id="BasicBoard"
               position={game.fen()}
               onPieceDrop={onDrop}

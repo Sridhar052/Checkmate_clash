@@ -221,53 +221,6 @@ export const TournamentManager: React.FC = () => {
     }
   };
 
-  const simulateMatch = async () => {
-    if (!tournament || !user) return;
-    setLoading(true);
-    try {
-      const idleOpponent = tournament.players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
-      if (!idleOpponent) {
-        alert('No idle players available to simulate a match.');
-        setLoading(false);
-        return;
-      }
-
-      const resultRoll = Math.random();
-      const isDraw = resultRoll >= 0.8;
-      const userWins = resultRoll < 0.45;
-      const opponentWins = !isDraw && !userWins;
-
-      const newPlayers = tournament.players.map((p: any) => {
-        if (p.uid === user.uid || p.uid === idleOpponent.uid) {
-          let score = p.score;
-          if (isDraw) {
-            score += 1;
-          } else if (userWins && p.uid === user.uid) {
-            score += 2;
-          } else if (opponentWins && p.uid === idleOpponent.uid) {
-            score += 2;
-          } else {
-            score += 1;
-          }
-          return { ...p, score, status: 'idle' };
-        }
-        return p;
-      });
-
-      await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
-      alert(isDraw
-        ? `Draw! ${user.displayName} and ${idleOpponent.name} each receive 1 point.`
-        : userWins
-          ? `${user.displayName} wins and gains 2 points; ${idleOpponent.name} receives 1 point.`
-          : `${idleOpponent.name} wins and gains 2 points; ${user.displayName} receives 1 point.`
-      );
-    } catch (e) {
-      console.error('simulateMatch error', e);
-      alert('Unable to simulate match. Please try again.');
-    }
-    setLoading(false);
-  };
-
   const handleGameExit = async (gameId: string) => {
     if (!tournament) return;
     
@@ -628,14 +581,9 @@ export const TournamentManager: React.FC = () => {
                     </div>
 
                     {!activeGameId && tournament.players.find((p: any) => p.uid === user.uid)?.status === 'idle' && (
-                      <div className="grid gap-4">
-                        <button onClick={findMatch} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
-                          Find Next Match
-                        </button>
-                        <button onClick={simulateMatch} className="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all">
-                          Simulate Random Match
-                        </button>
-                      </div>
+                      <button onClick={findMatch} className="w-full py-6 bg-green-600 rounded-xl font-bold text-2xl hover:bg-green-700 transition-all">
+                        Find Next Match
+                      </button>
                     )}
                   </div>
                 )}
