@@ -4,7 +4,7 @@ import { Chessboard } from 'react-chessboard';
 import { PlayerInfo } from './PlayerInfo';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, RotateCcw, Eye, Settings, LogOut, Swords } from 'lucide-react';
-import { db, doc, onSnapshot, updateDoc, auth, getDoc } from '../firebase';
+import { db, doc, onSnapshot, updateDoc, getDoc } from '../firebase';
 
 const ChessboardAny = Chessboard as any;
 
