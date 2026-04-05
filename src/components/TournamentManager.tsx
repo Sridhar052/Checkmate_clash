@@ -5,7 +5,11 @@ import { ChessGame } from './ChessGame';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const TournamentManager: React.FC = () => {
-  const [user, setUser] = useState({ uid: 'anonymous', displayName: 'Anonymous Player', photoURL: '' });
+  const [user, setUser] = useState(() => ({
+    uid: `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    displayName: `Player_${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+    photoURL: ''
+  }));
   const [tournament, setTournament] = useState<any>(null);
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,7 +89,6 @@ export const TournamentManager: React.FC = () => {
   };
 
   const createTournament = async () => {
-    if (!user) return;
     setLoading(true);
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
@@ -94,7 +97,7 @@ export const TournamentManager: React.FC = () => {
         inviteCode: code,
         adminId: user.uid,
         status: 'waiting',
-        players: [{ uid: user.uid, name: user.displayName || 'Anonymous', score: 0, status: 'idle' }],
+        players: [{ uid: user.uid, name: user.displayName, score: 0, status: 'idle' }],
         duration: duration,
         matchTime: matchTime,
         startTime: null,
@@ -107,7 +110,7 @@ export const TournamentManager: React.FC = () => {
   };
 
   const joinTournament = async () => {
-    if (!user || !inviteCode) return;
+    if (!inviteCode) return;
     setLoading(true);
     try {
       const q = query(collection(db, 'tournaments'), where('inviteCode', '==', inviteCode.toUpperCase()), where('status', '==', 'waiting'));
@@ -116,7 +119,7 @@ export const TournamentManager: React.FC = () => {
         const tDoc = snapshot.docs[0];
         const tData = tDoc.data();
         if (!tData.players.some((p: any) => p.uid === user.uid)) {
-          const newPlayers = [...tData.players, { uid: user.uid, name: user.displayName || 'Anonymous', score: 0, status: 'idle' }];
+          const newPlayers = [...tData.players, { uid: user.uid, name: user.displayName, score: 0, status: 'idle' }];
           await updateDoc(doc(db, 'tournaments', tDoc.id), { players: newPlayers });
         }
       } else {
