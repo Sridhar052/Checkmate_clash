@@ -235,21 +235,22 @@ export const ChessGame: React.FC<ChessGameProps> = ({
 
           <div className="relative w-full max-w-[600px] aspect-square shadow-2xl rounded-sm overflow-hidden">
             <Chessboard
-              id="BasicBoard"
-              position={game.fen()}
-              onPieceDrop={onDrop}
-              onSquareClick={onSquareClick}
-              animationDuration={200}
-              boardOrientation={isWhite ? "white" : "black"}
-              customDarkSquareStyle={{ backgroundColor: '#779556' }}
-              customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
-              customSquareStyles={{
-                ...optionSquares,
-                ...(lastMove ? {
-                  [lastMove.from]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' },
-                  [lastMove.to]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' }
-                } : {})
-              }}
+              {...({
+                position: game.fen(),
+                onPieceDrop: onDrop,
+                onSquareClick: onSquareClick,
+                animationDuration: 200,
+                boardOrientation: isWhite ? "white" : "black",
+                customDarkSquareStyle: { backgroundColor: '#779556' },
+                customLightSquareStyle: { backgroundColor: '#ebecd0' },
+                customSquareStyles: {
+                  ...optionSquares,
+                  ...(lastMove ? {
+                    [lastMove.from]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' },
+                    [lastMove.to]: { backgroundColor: 'rgba(255, 255, 0, 0.2)' }
+                  } : {})
+                }
+              } as any)}
             />
             
             <AnimatePresence>
