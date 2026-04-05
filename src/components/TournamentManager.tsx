@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs } from '../firebase';
+import { db, collection, doc, addDoc, updateDoc, onSnapshot, query, where, getDocs, getDoc } from '../firebase';
 import { Trophy, Users, Play, Plus, UserPlus, Copy, Check, Clock, Eye, Swords, Settings } from 'lucide-react';
 import { ChessGame } from './ChessGame';
 import { motion, AnimatePresence } from 'motion/react';
@@ -163,36 +163,76 @@ export const TournamentManager: React.FC = () => {
   const findMatch = async () => {
     if (!tournament || !user) return;
     setLoading(true);
-    // Simple pairing: find another idle player
-    const idleOpponent = tournament.players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
-    if (idleOpponent) {
-      // Create game
-      const initialTime = (tournament.matchTime || 3) * 60;
-      const gameRef = await addDoc(collection(db, 'games'), {
-        tournamentId: tournament.id,
-        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        whitePlayerId: user.uid,
-        blackPlayerId: idleOpponent.uid,
-        whitePlayerName: user.displayName,
-        blackPlayerName: idleOpponent.name,
-        whiteTime: initialTime,
-        blackTime: initialTime,
-        turn: 'w',
-        status: 'active'
-      });
-      
-      // Update player statuses
-      const newPlayers = tournament.players.map((p: any) => {
-        if (p.uid === user.uid || p.uid === idleOpponent.uid) {
-          return { ...p, status: 'playing' };
-        }
-        return p;
-      });
-      await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
-    } else {
-      alert('No idle players found. Please wait.');
+    try {
+      // Simple pairing: find another idle player
+      const idleOpponent = tournament.players.find((p: any) => p.uid !== user.uid && p.status === 'idle');
+      if (idleOpponent) {
+        // Randomly assign white and black
+        const isCurrentUserWhite = Math.random() > 0.5;
+        const whitePlayerId = isCurrentUserWhite ? user.uid : idleOpponent.uid;
+        const blackPlayerId = isCurrentUserWhite ? idleOpponent.uid : user.uid;
+        const whitePlayerName = isCurrentUserWhite ? user.displayName : idleOpponent.name;
+        const blackPlayerName = isCurrentUserWhite ? idleOpponent.name : user.displayName;
+
+        // Create game
+        const initialTime = (tournament.matchTime || 3) * 60;
+        const gameRef = await addDoc(collection(db, 'games'), {
+          tournamentId: tournament.id,
+          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          whitePlayerId: whitePlayerId,
+          blackPlayerId: blackPlayerId,
+          whitePlayerName: whitePlayerName,
+          blackPlayerName: blackPlayerName,
+          whiteTime: initialTime,
+          blackTime: initialTime,
+          turn: 'w',
+          status: 'active'
+        });
+        
+        // Update player statuses
+        const newPlayers = tournament.players.map((p: any) => {
+          if (p.uid === user.uid || p.uid === idleOpponent.uid) {
+            return { ...p, status: 'playing' };
+          }
+          return p;
+        });
+        await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
+      } else {
+        alert('No idle players found. Please wait for another player to join.');
+      }
+    } catch (e) {
+      console.error('findMatch error', e);
+      alert('Error finding match. Please try again.');
     }
     setLoading(false);
+  };
+
+  const handleGameExit = async (gameId: string) => {
+    if (!tournament) return;
+    
+    // Get the game data to check if it's finished
+    const gameRef = doc(db, 'games', gameId);
+    try {
+      const gameSnap = await getDoc(gameRef);
+      if (gameSnap.exists()) {
+        const gameData = gameSnap.data();
+        
+        // If game is finished, reset player status to idle for next match
+        if (gameData.status === 'finished') {
+          const newPlayers = tournament.players.map((p: any) => {
+            if (p.uid === user.uid) {
+              return { ...p, status: 'idle' };
+            }
+            return p;
+          });
+          await updateDoc(doc(db, 'tournaments', tournament.id), { players: newPlayers });
+        }
+      }
+    } catch (e) {
+      console.error('handleGameExit error', e);
+    }
+    
+    setActiveGameId(null);
   };
 
   const tournamentTimeLeft = useMemo(() => {
@@ -218,7 +258,7 @@ export const TournamentManager: React.FC = () => {
       <ChessGame 
         gameId={activeGameId} 
         isWhite={activeGames.find(g => g.id === activeGameId)?.whitePlayerId === user.uid}
-        onExit={() => setActiveGameId(null)}
+        onExit={() => handleGameExit(activeGameId)}
         tournamentId={tournament?.id}
       />
     );
