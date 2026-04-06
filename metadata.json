@@ -1,5 +1,5 @@
 {
-  "name": "Grandmaster Chess",
-  "description": "A professional-grade chess platform with real-time timers, move validation, and spectator mode.",
+  "name": "Grandmaster Arena",
+  "description": "A professional-level real-time multiplayer chess tournament platform with arena-style matchmaking and live leaderboards.",
   "requestFramePermissions": []
 }

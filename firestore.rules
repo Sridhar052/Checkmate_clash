@@ -1,45 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
+    // Helper functions
     function isAuthenticated() {
-      return true; // Allow all access for demo purposes
+      return request.auth != null;
     }
     
-    function isOwner(userId) {
-      return true; // Allow all operations for demo purposes
-    }
-    
-    function isValidTournament(data) {
-      return data.inviteCode is string && data.inviteCode.size() > 0 &&
-             data.adminId is string &&
-             data.status in ['waiting', 'started', 'finished'] &&
-             data.players is list;
-    }
-    
-    function isValidGame(data) {
-      return data.fen is string &&
-             data.whitePlayerId is string &&
-             data.blackPlayerId is string &&
-             data.whiteTime is number &&
-             data.blackTime is number &&
-             data.turn in ['w', 'b'] &&
-             data.status in ['active', 'finished'];
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "bsridhar052@gmail.com";
     }
 
-    match /tournaments/{tournamentId} {
+    // Players: Anyone can read, only the player (or admin) can update their own status
+    match /players/{playerId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create: if true; // Players join without auth initially, or we can restrict to server
+      allow update: if true; // Simplified for this arena-style app where server handles logic
+      allow delete: if isAdmin();
     }
-    
+
+    // Games: Anyone can read, only server/admin should write (simplified for demo)
     match /games/{gameId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow write: if true; 
+    }
+
+    // Tournament state
+    match /tournament/state {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

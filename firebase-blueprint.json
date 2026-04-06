@@ -1,62 +1,56 @@
 {
   "entities": {
-    "Tournament": {
-      "title": "Tournament",
-      "description": "A chess tournament managed by an admin.",
+    "Player": {
+      "title": "Player",
+      "description": "A player in the tournament",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "inviteCode": { "type": "string" },
-        "adminId": { "type": "string" },
-        "players": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "uid": { "type": "string" },
-              "name": { "type": "string" },
-              "score": { "type": "number" },
-              "status": { "type": "string", "enum": ["idle", "playing"] }
-            }
-          }
-        },
-        "status": { "type": "string", "enum": ["waiting", "started", "finished"] },
-        "duration": { "type": "number", "description": "Duration in minutes" },
-        "matchTime": { "type": "number", "description": "Time per player in minutes" },
-        "startTime": { "type": "number" },
-        "endTime": { "type": "number" }
+        "points": { "type": "number" },
+        "wins": { "type": "number" },
+        "losses": { "type": "number" },
+        "draws": { "type": "number" },
+        "streak": { "type": "number" },
+        "isOnline": { "type": "boolean" },
+        "lastActive": { "type": "number" }
       },
-      "required": ["inviteCode", "adminId", "status", "players", "duration"]
+      "required": ["name", "points", "wins", "losses", "draws", "streak"]
     },
     "Game": {
       "title": "Game",
-      "description": "A live chess game instance.",
+      "description": "A chess match between two players",
       "type": "object",
       "properties": {
-        "tournamentId": { "type": "string" },
+        "white": { "type": "string" },
+        "black": { "type": "string" },
+        "whiteName": { "type": "string" },
+        "blackName": { "type": "string" },
         "fen": { "type": "string" },
-        "whitePlayerId": { "type": "string" },
-        "blackPlayerId": { "type": "string" },
-        "whitePlayerName": { "type": "string" },
-        "blackPlayerName": { "type": "string" },
+        "status": { "type": "string", "enum": ["ongoing", "completed"] },
+        "winner": { "type": "string" },
+        "startTime": { "type": "number" },
         "whiteTime": { "type": "number" },
         "blackTime": { "type": "number" },
-        "turn": { "type": "string", "enum": ["w", "b"] },
-        "status": { "type": "string", "enum": ["active", "finished"] },
-        "winner": { "type": "string" },
-        "winnerId": { "type": "string" }
+        "lastMoveTime": { "type": "number" }
       },
-      "required": ["tournamentId", "fen", "whitePlayerId", "blackPlayerId", "whiteTime", "blackTime", "turn", "status"]
+      "required": ["white", "black", "fen", "status", "startTime"]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Global tournament state",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["waiting", "active", "ended"] },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "duration": { "type": "number" }
+      },
+      "required": ["status", "duration"]
     }
   },
   "firestore": {
-    "/tournaments/{tournamentId}": {
-      "schema": "Tournament",
-      "description": "Collection of tournaments."
-    },
-    "/games/{gameId}": {
-      "schema": "Game",
-      "description": "Collection of active and past games."
-    }
+    "/players/{playerId}": { "schema": "Player", "description": "Player profiles" },
+    "/games/{gameId}": { "schema": "Game", "description": "Match records" },
+    "/tournament/state": { "schema": "Tournament", "description": "Tournament status" }
   }
 }
