@@ -7,7 +7,9 @@ import { Trophy, Users, Play, Timer, LogOut, ShieldCheck, Crown, Swords, History
 import { cn } from './lib/utils';
 import { Player, Game, TournamentState } from './types';
 
-const socket: Socket = io();
+const socket: Socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, {
+  transports: ['websocket', 'polling'],
+});
 const ChessboardAny = Chessboard as any;
 
 function PlayerRating({ username }: { username: string }) {
@@ -120,6 +122,9 @@ export default function App() {
     });
 
     return () => {
+      socket.off('error');
+      socket.off('admin_success');
+      socket.off('admin_failure');
       socket.off('player_list');
       socket.off('tournament_status');
       socket.off('match_found');
@@ -358,6 +363,14 @@ export default function App() {
                 </span>
               </div>
             )}
+            {!isAdmin && (
+              <button
+                onClick={() => setShowAdminLogin(!showAdminLogin)}
+                className="text-[#989795] hover:text-white transition-colors text-sm"
+              >
+                Admin Login
+              </button>
+            )}
             <button 
               onClick={() => window.location.reload()}
               className="text-[#989795] hover:text-white transition-colors"
@@ -366,6 +379,40 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {showAdminLogin && !isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-16 left-1/2 -translate-x-1/2 w-full max-w-md bg-[#262421] border border-[#3c3a37] p-4 rounded-xl shadow-2xl z-10"
+          >
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Admin Password"
+                className="w-full bg-[#3c3a37] border-none rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#81b64c] outline-none"
+              />
+              {adminError && <p className="text-red-500 text-xs">{adminError}</p>}
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#81b64c] hover:bg-[#a3d160] text-white font-bold py-2 rounded transition-all"
+                >
+                  Login as Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAdminLogin(false)}
+                  className="flex-1 bg-[#45423e] hover:bg-[#504d49] text-white font-bold py-2 rounded transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
 
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <AnimatePresence mode="wait">

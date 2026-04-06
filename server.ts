@@ -5,6 +5,9 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Chess } from 'chess.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +31,7 @@ async function startServer() {
   let tournamentEndTime: number | null = null;
   let tournamentConfig = { duration: 30, matchTime: 180, maxPlayers: 10 };
   let inviteCode: string | null = null;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chessadmin123';
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -61,7 +65,7 @@ async function startServer() {
     });
 
     socket.on('admin_login', (password) => {
-      if (password === 'chessadmin123') {
+      if (password === ADMIN_PASSWORD) {
         socket.emit('admin_success');
       } else {
         socket.emit('admin_failure', 'Invalid admin password');
