@@ -31,7 +31,7 @@ async function startServer() {
   let tournamentEndTime: number | null = null;
   let tournamentConfig = { duration: 30, matchTime: 180, maxPlayers: 10 };
   let inviteCode: string | null = null;
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chessadmin123';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminchess123';
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
